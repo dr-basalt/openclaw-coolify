@@ -86,7 +86,13 @@ RUN --mount=type=cache,target=/data/.npm \
     fi 
 
 # Install uv explicitly
-RUN curl -L https://github.com/azlux/uv/releases/latest/download/uv-linux-x64 -o /usr/local/bin/uv && \
+#RUN curl -L https://github.com/azlux/uv/releases/latest/download/uv-linux-x64 -o /usr/local/bin/uv && \
+#    chmod +x /usr/local/bin/uv
+# ✅ Fix — bon repo (astral-sh) + détection d'arch automatique
+RUN ARCH=$(dpkg --print-architecture) && \
+    UV_ARCH=$([ "$ARCH" = "arm64" ] && echo "aarch64" || echo "x86_64") && \
+    curl -fsSL "https://github.com/astral-sh/uv/releases/latest/download/uv-${UV_ARCH}-unknown-linux-gnu.tar.gz" \
+    | tar -xz --strip-components=1 -C /usr/local/bin && \
     chmod +x /usr/local/bin/uv
 
 # Claude + Kimi
