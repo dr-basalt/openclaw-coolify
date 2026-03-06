@@ -118,8 +118,8 @@ COPY . .
 
 # ✅ Copier le vrai binaire openclaw depuis l'image officielle
 COPY --from=openclaw-source /usr/local/bin/openclaw /usr/local/bin/openclaw
-#COPY --from=openclaw-source /opt/openclaw /opt/openclaw
-COPY --from=openclaw-source /usr/local/bin/openclaw /usr/local/bin/openclaw
+COPY --from=openclaw-source /opt/openclaw /opt/openclaw
+#COPY --from=openclaw-source /usr/local/bin/openclaw /usr/local/bin/openclaw
 
 RUN chmod +x /usr/local/bin/openclaw && \
     ln -sf /data/.claude/bin/claude /usr/local/bin/claude || true && \
