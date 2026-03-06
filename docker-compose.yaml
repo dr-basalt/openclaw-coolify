@@ -6,6 +6,7 @@ services:
       - registry-data:/var/lib/registry
     environment:
       REGISTRY_HTTP_SECRET: ${SERVICE_BASE64_REGISTRY}
+
   openclaw:
     build:
       context: .
@@ -26,7 +27,6 @@ services:
       NODE_OPTIONS: '--max-old-space-size=4096'
       HOME: /data
       TERM: xterm-256color
-      # Persistence: Command History
       HISTFILE: /data/.bash_history
       HISTSIZE: 50000
       HISTSAVE: 50000
@@ -36,14 +36,10 @@ services:
       XDG_CACHE_HOME: /data/.cache
       NPM_CONFIG_CACHE: /data/.npm
       BUN_INSTALL: /data/.bun
-      # Map OpenClaw vars
       OPENCLAW_GATEWAY_BIND: lan
       OPENCLAW_GATEWAY_PORT: ${OPENCLAW_GATEWAY_PORT:-18789}
-      # Tell the binary where to look for state/config
       OPENCLAW_STATE_DIR: /data/.openclaw
       OPENCLAW_WORKSPACE: /data/openclaw-workspace
-
-      # API Keys injected from .env or Coolify
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       MINIMAX_API_KEY: ${MINIMAX_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
@@ -53,48 +49,34 @@ services:
       MOONSHOT_API_KEY: ${KIMI_API_KEY}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       SANDBOX_CONTAINER: ${SANDBOX_CONTAINER:-false}
-      
-      # Optional integrations
       GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
       NANOBANANA_API_KEY: ${NANOBANANA_API_KEY}
       ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
-
       SERVICE_URL_OPENCLAW_18789: null
       SERVICE_URL_OPENCLAWWEBHOOK_8788: null
       BASE_URL: 'https://${SERVICE_FQDN_OPENCLAW}'
       PUBLIC_URL: 'https://${SERVICE_FQDN_OPENCLAW}'
-      # Bootstrap controls
       OPENCLAW_AUTO_BOOTSTRAP: "1"
       OPENCLAW_PRINT_ACCESS: "1"
       GATEWAY_TRUSTED_PROXIES: '*'
-      # Fix for EMFILE/Inotify issues in Docker
       CHOKIDAR_USEPOLLING: "true"
-      # Public URL Access
-
       CF_TUNNEL_TOKEN: ${CF_TUNNEL_TOKEN}
-      # Deployment & Git
       VERCEL_ORG_ID: ${VERCEL_ORG_ID}
       VERCEL_PROJECT_ID: ${VERCEL_PROJECT_ID}
       VERCEL_TOKEN: ${VERCEL_TOKEN}
       GITHUB_TOKEN: ${GITHUB_TOKEN}
       GITHUB_USERNAME: ${GITHUB_USERNAME}
       GITHUB_EMAIL: ${GITHUB_EMAIL}
-      # Optional
       OPENCLAW_BETA: ${OPENCLAW_BETA:-false}
-
     volumes:
       - openclaw-data:/data
       - openclaw-config:/root/.openclaw
       - openclaw-workspace:/root/openclaw-workspace
-
-      # Secure: Socket mount removed in favor of proxy
-      # - /var/run/docker.sock:/var/run/docker.sock
-
     depends_on:
       - docker-proxy
-
+    expose:
+      - "18789"
     command: ["bash", "/app/scripts/bootstrap.sh"]
-    #command: sleep infinity 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:18789/"]
       interval: 30s
@@ -108,15 +90,14 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      # Security: Only enable necessary Docker APIs
-      POST: 1       # Create containers
-      CONTAINERS: 1 # List/manage containers
-      IMAGES: 1     # Pull images
-      NETWORKS: 1   # Connect to networks
-      INFO: 1       # Version check
+      POST: 1
+      CONTAINERS: 1
+      IMAGES: 1
+      NETWORKS: 1
+      INFO: 1
       VERSION: 1
-      EXEC: 1       # Run commands (exec)
-      EVENTS: 1     # Listen for events (if needed)
+      EXEC: 1
+      EVENTS: 1
 
   searxng:
     build:
