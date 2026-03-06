@@ -93,8 +93,8 @@ services:
     depends_on:
       - docker-proxy
 
-    #command: ["bash", "/app/scripts/bootstrap.sh"]
-    command: sleep infinity 
+    command: ["bash", "/app/scripts/bootstrap.sh"]
+    #command: sleep infinity 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:18789/"]
       interval: 30s
