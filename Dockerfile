@@ -1,45 +1,23 @@
 # syntax=docker/dockerfile:1
 
-# ✅ Source du vrai binaire openclaw
-FROM coollabsio/openclaw:latest AS openclaw-source
-
 ########################################
 # Stage 1: Base System
 ########################################
-#FROM node:20-bookworm-slim AS base
 FROM node:22-bookworm-slim AS base
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_ROOT_USER_ACTION=ignore
 
-# Core packages + build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    wget \
-    git \
-    unzip \
-    build-essential \
-    python3 \
-    python3-pip \
-    python3-venv \
-    jq \
-    lsof \
-    openssl \
-    ca-certificates \
-    gnupg \
+    curl wget git unzip build-essential \
+    python3 python3-pip python3-venv \
+    jq lsof openssl ca-certificates gnupg \
     ripgrep fd-find fzf bat \
-    pandoc \
-    poppler-utils \
-    ffmpeg \
-    imagemagick \
-    graphviz \
-    sqlite3 \
-    pass \
-    chromium \
+    pandoc poppler-utils ffmpeg imagemagick \
+    graphviz sqlite3 pass chromium \
     && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y \
-    ca-certificates curl gnupg && \
+RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
     install -m 0755 -d /etc/apt/keyrings && \
     curl -fsSL https://download.docker.com/linux/debian/gpg \
     | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
@@ -49,7 +27,6 @@ RUN apt-get update && apt-get install -y \
     apt-get update && apt-get install -y docker-ce-cli && \
     rm -rf /var/lib/apt/lists/*
 
-# 🔥 CRITICAL FIX (native modules)
 ENV PYTHON=/usr/bin/python3 \
     npm_config_python=/usr/bin/python3
 
@@ -88,7 +65,6 @@ RUN --mount=type=cache,target=/data/.bun/install/cache \
 
 ENV PATH="/usr/local/bin:/usr/local/lib/node_modules/.bin:${PATH}"
 
-# ⚠️ npm openclaw = placeholder vide, on le garde pour compatibilité mais le vrai vient de l'image officielle
 RUN --mount=type=cache,target=/data/.npm \
     if [ "$OPENCLAW_BETA" = "true" ]; then \
     npm install -g openclaw@beta; \
@@ -103,29 +79,26 @@ RUN ARCH=$(dpkg --print-architecture) && \
     chmod +x /usr/local/bin/uv
 
 RUN curl -fsSL https://claude.ai/install.sh | bash && \
-    curl -L https://code.kimi.com/install.sh | bash && \
-    command -v uv
+    curl -L https://code.kimi.com/install.sh | bash || true
 
 ENV PATH="/root/.local/bin:${PATH}"
 
 ########################################
-# Stage 4: Final
+# Stage 4: Final — image officielle comme base
 ########################################
-FROM dependencies AS final
+FROM coollabsio/openclaw:latest AS final
+
+# Récupérer nos outils custom
+COPY --from=dependencies /usr/local/bin/uv /usr/local/bin/uv
+COPY --from=dependencies /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=dependencies /root/.local /root/.local
+COPY --from=dependencies /data/.bun /data/.bun
 
 WORKDIR /app
 COPY . .
 
-# ✅ Copier le vrai binaire openclaw depuis l'image officielle
-COPY --from=openclaw-source /usr/local/bin/openclaw /usr/local/bin/openclaw
-COPY --from=openclaw-source /opt/openclaw /opt/openclaw
-#COPY --from=openclaw-source /usr/local/bin/openclaw /usr/local/bin/openclaw
+RUN chmod +x /app/scripts/*.sh
 
-RUN chmod +x /usr/local/bin/openclaw && \
-    ln -sf /data/.claude/bin/claude /usr/local/bin/claude || true && \
-    ln -sf /data/.kimi/bin/kimi /usr/local/bin/kimi || true && \
-    chmod +x /app/scripts/*.sh
-
-ENV PATH="/root/.local/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin:/data/.bun/bin:/data/.bun/install/global/bin:/data/.claude/bin:/data/.kimi/bin"
+ENV PATH="/root/.local/bin:/usr/local/bin:/usr/bin:/bin:/data/.bun/bin:/data/.bun/install/global/bin:/data/.claude/bin:/data/.kimi/bin"
 EXPOSE 18789
 CMD ["bash", "/app/scripts/bootstrap.sh"]
