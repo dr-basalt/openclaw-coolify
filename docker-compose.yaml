@@ -12,6 +12,7 @@ services:
       args:
         - OPENCLAW_BETA=${OPENCLAW_BETA:-false}
     restart: on-failure:10
+    command: sleep infinity 
     ulimits:
       nofile:
         soft: 65535
