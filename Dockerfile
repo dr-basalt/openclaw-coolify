@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1
 
+# ✅ Source du vrai binaire openclaw
+FROM coollabsio/openclaw:latest AS openclaw-source
+
 ########################################
 # Stage 1: Base System
 ########################################
@@ -60,10 +63,8 @@ FROM base AS runtimes
 ENV BUN_INSTALL="/data/.bun" \
     PATH="/usr/local/go/bin:/data/.bun/bin:/data/.bun/install/global/bin:$PATH"
 
-# Install Bun (allow bun to manage compatible node)
 RUN curl -fsSL https://bun.sh/install | bash
 
-# Python tools
 RUN pip3 install ipython csvkit openpyxl python-docx pypdf botasaurus browser-use playwright --break-system-packages && \
     playwright install-deps
 
@@ -79,39 +80,31 @@ ENV OPENCLAW_BETA=${OPENCLAW_BETA} \
     OPENCLAW_NO_ONBOARD=1 \
     NPM_CONFIG_UNSAFE_PERM=true
 
-# Bun global installs (with cache)
 RUN --mount=type=cache,target=/data/.bun/install/cache \
     bun install -g vercel @marp-team/marp-cli https://github.com/tobi/qmd && \
     bun pm -g untrusted && \
     bun install -g @openai/codex @google/gemini-cli opencode-ai @steipete/summarize @hyperbrowser/agent clawhub
 
-# Ensure global npm bin is in PATH
 ENV PATH="/usr/local/bin:/usr/local/lib/node_modules/.bin:${PATH}"
 
-# OpenClaw (npm install)
+# ⚠️ npm openclaw = placeholder vide, on le garde pour compatibilité mais le vrai vient de l'image officielle
 RUN --mount=type=cache,target=/data/.npm \
     if [ "$OPENCLAW_BETA" = "true" ]; then \
     npm install -g openclaw@beta; \
     else \
     npm install -g openclaw; \
-    fi 
+    fi
 
-# Install uv explicitly
-#RUN curl -L https://github.com/azlux/uv/releases/latest/download/uv-linux-x64 -o /usr/local/bin/uv && \
-#    chmod +x /usr/local/bin/uv
-# ✅ Fix — bon repo (astral-sh) + détection d'arch automatique
 RUN ARCH=$(dpkg --print-architecture) && \
     UV_ARCH=$([ "$ARCH" = "arm64" ] && echo "aarch64" || echo "x86_64") && \
     curl -fsSL "https://github.com/astral-sh/uv/releases/latest/download/uv-${UV_ARCH}-unknown-linux-gnu.tar.gz" \
     | tar -xz --strip-components=1 -C /usr/local/bin && \
     chmod +x /usr/local/bin/uv
 
-# Claude + Kimi
 RUN curl -fsSL https://claude.ai/install.sh | bash && \
     curl -L https://code.kimi.com/install.sh | bash && \
     command -v uv
 
-# Make sure uv and other local bins are available
 ENV PATH="/root/.local/bin:${PATH}"
 
 ########################################
@@ -122,8 +115,12 @@ FROM dependencies AS final
 WORKDIR /app
 COPY . .
 
-# Symlinks
-RUN ln -sf /data/.claude/bin/claude /usr/local/bin/claude || true && \
+# ✅ Copier le vrai binaire openclaw depuis l'image officielle
+COPY --from=openclaw-source /usr/local/bin/openclaw /usr/local/bin/openclaw
+COPY --from=openclaw-source /opt/openclaw /opt/openclaw
+
+RUN chmod +x /usr/local/bin/openclaw && \
+    ln -sf /data/.claude/bin/claude /usr/local/bin/claude || true && \
     ln -sf /data/.kimi/bin/kimi /usr/local/bin/kimi || true && \
     chmod +x /app/scripts/*.sh
 
